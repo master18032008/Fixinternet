@@ -1,15 +1,18 @@
-# ==============================
-# CloudRedirect Installer
-# ==============================
-$Host.UI.RawUI.WindowTitle = "CloudRedirect Installer |Loja GameOver"
+# =========================================================================
+# CloudRedirect Installer - Versão Direta (v2.1.8 Estável)
+# =========================================================================
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
 
-# ===================== LOGGING =====================
+$Host.UI.RawUI.WindowTitle = "CloudRedirect Installer | Loja GameOver"
+Clear-Host
+
+# ==================== CONFIGURAÇÃO DE LINKS DIRETOS (v2.1.8) ====================
+$LinkDoFixer = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.1.8/CloudRedirectCLI.exe"
+$LinkDaDll   = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.1.8/cloud_redirect.dll"
+# ===========================================================================
+
 function Log {
-    param (
-        [string]$Type,
-        [string]$Message,
-        [boolean]$NoNewline = $false
-    )
+    param ([string]$Type, [string]$Message, [boolean]$NoNewline = $false)
     $Type = $Type.ToUpper()
     $color = switch ($Type) {
         "OK"   { "Green" }
@@ -25,7 +28,6 @@ function Log {
     Write-Host "[$Type] $Message" -ForegroundColor $color -NoNewline:$NoNewline
 }
 
-# ===================== STEAM DETECTION =====================
 Log "INFO" "Searching for Steam installation..."
 
 function Find-SteamPath {
@@ -46,7 +48,7 @@ function Find-SteamPath {
     $PossiblePaths = $PossiblePaths | Select-Object -Unique | Where-Object { Test-Path $_ }
    
     if ($PossiblePaths.Count -eq 0) {
-        Log "ERR" "Steam installation not found. Please install Steam first."
+        Log "ERR" "Steam installation not found."
         exit 1
     }
    
@@ -57,46 +59,40 @@ function Find-SteamPath {
 
 $steam = Find-SteamPath
 
-# ===================== CLOSE STEAM =====================
 Log "INFO" "Closing Steam if running..."
-Get-Process -Name "steam" -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process -Name "steam", "steamwebhelper" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 3
 Write-Host ""
 
-# ===================== DOWNLOAD LATEST FILES =====================
-Log "INFO" "Fetching latest CloudRedirect files..."
+Log "INFO" "Downloading CloudRedirect v2.1.8 files via Direct Stream..."
 
-$ApiUrl = "https://api.github.com/repos/Selectively11/CloudRedirect/releases/latest"
-$CliFile = Join-Path $env:TEMP "CloudRedirectCLI.exe"
-$DllFile = Join-Path $env:TEMP "cloud_redirect.dll"
+$tmpFolder = "C:\GameOver_Cloud_Tmp"
+if (Test-Path $tmpFolder) { Remove-Item $tmpFolder -Recurse -Force -ErrorAction SilentlyContinue }
+New-Item -ItemType Directory -Path $tmpFolder | Out-Null
+
+$CliFile = Join-Path $tmpFolder "CloudRedirectCLI.exe"
+$DllFile = Join-Path $tmpFolder "cloud_redirect.dll"
 
 try {
-    $Release = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing -ErrorAction Stop
-    Log "LOG" "Latest version: $($Release.tag_name)"
+    # Download direto do Executável v2.1.8
+    Log "LOG" "Downloading CloudRedirectCLI.exe v2.1.8..."
+    Invoke-WebRequest -Uri $LinkDoFixer -UserAgent "Mozilla/5.0" -OutFile $CliFile -TimeoutSec 60 -ErrorAction Stop
+    Log "OK" "CloudRedirectCLI.exe downloaded"
 
-    # Download CloudRedirectCLI.exe
-    $CliAsset = $Release.assets | Where-Object { $_.name -eq "CloudRedirectCLI.exe" } | Select-Object -First 1
-    if ($CliAsset) {
-        Log "LOG" "Downloading CloudRedirectCLI.exe..."
-        Invoke-WebRequest -Uri $CliAsset.browser_download_url -OutFile $CliFile -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
-        Log "OK" "CloudRedirectCLI.exe downloaded"
-    }
-
-    # Download cloud_redirect.dll
-    $DllAsset = $Release.assets | Where-Object { $_.name -eq "cloud_redirect.dll" } | Select-Object -First 1
-    if ($DllAsset) {
-        Log "LOG" "Downloading cloud_redirect.dll..."
-        Invoke-WebRequest -Uri $DllAsset.browser_download_url -OutFile $DllFile -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
-        Log "OK" "cloud_redirect.dll downloaded"
-    }
+    # Download direto da DLL v2.1.8
+    Log "LOG" "Downloading cloud_redirect.dll v2.1.8..."
+    Invoke-WebRequest -Uri $LinkDaDll -UserAgent "Mozilla/5.0" -OutFile $DllFile -TimeoutSec 60 -ErrorAction Stop
+    Log "OK" "cloud_redirect.dll downloaded"
 }
 catch {
-    Log "ERR" "Failed to download latest files"
+    Log "ERR" "Failed to download files from remote server."
     Log "ERR" $_.Exception.Message
+    Write-Host "Pressione qualquer tecla para fechar..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    if (Test-Path $tmpFolder) { Remove-Item $tmpFolder -Recurse -Force -ErrorAction SilentlyContinue }
     exit 1
 }
 
-# ===================== EXECUTE CLI =====================
 for ($i = 5; $i -ge 1; $i--) {
     Log "INFO" "Starting CloudRedirect Fixer in $i second$(if($i -gt 1){'s'})..." $true
     Start-Sleep -Seconds 1
@@ -113,7 +109,6 @@ catch {
     Log "ERR" $_.Exception.Message
 }
 
-# ===================== INSTALL DLL =====================
 Log "INFO" "Installing cloud_redirect.dll to Steam folder..."
 $TargetDll = Join-Path $steam "cloud_redirect.dll"
 
@@ -126,18 +121,13 @@ catch {
     Log "ERR" $_.Exception.Message
 }
 
-# ===================== CLEANUP =====================
 Start-Sleep -Seconds 2
 Log "INFO" "Cleaning temporary files..."
-Remove-Item -Path $CliFile -Force -ErrorAction SilentlyContinue
-Remove-Item -Path $DllFile -Force -ErrorAction SilentlyContinue
+if (Test-Path $tmpFolder) { Remove-Item $tmpFolder -Recurse -Force -ErrorAction SilentlyContinue }
 Log "OK" "Temporary files removed"
 
 Write-Host ""
-
-# ===================== FINAL =====================
 Log "OK" "Operation completed successfully!"
-Log "WARN" "Steam startup may take longer than usual."
 Write-Host ""
 
 $exe = Join-Path $steam "steam.exe"
