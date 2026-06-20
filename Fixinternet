@@ -136,7 +136,13 @@ if (Test-Path $exe) {
     Start-Process $exe -ArgumentList "-clearbeta"
 }
 
-Write-Host ""
-Log "INFO" "Press any key to close this window..."
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+# ... (resto do seu script anterior acima) ...
+
+Log "INFO" "Reiniciando Steam..."
+$exe = Join-Path $steamDir "steam.exe"
+if (Test-Path $exe) { Start-Process $exe -ArgumentList "-clearbeta" }
+
+# Força o encerramento completo da sessão do PowerShell atual para avisar o Electron
+Start-Sleep -Seconds 2
+[Environment]::Exit(0)
 exit
