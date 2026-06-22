@@ -136,9 +136,25 @@ if (Test-Path $exe) {
     Start-Process $exe -ArgumentList "-clearbeta"
 }
 
-Log "INFO" "Reiniciando Steam..."
+# Tenta pegar o caminho do registro, se falhar, usa o padrão
+if (-not $steamDir) {
+    $regPath = "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam"
+    if (Test-Path $regPath) {
+        $steamDir = (Get-ItemProperty $regPath).InstallPath
+    } else {
+        $steamDir = "C:\Program Files (x86)\Steam"
+    }
+}
+
+# Agora o Join-Path não vai falhar porque $steamDir sempre terá um valor
 $exe = Join-Path $steamDir "steam.exe"
-if (Test-Path $exe) { Start-Process $exe -ArgumentList "-clearbeta" }
+
+if (Test-Path $exe) { 
+    Write-Host "Iniciando Steam em: $exe" -ForegroundColor Cyan
+    Start-Process $exe -ArgumentList "-clearbeta -no-browser +open steam://open/minigameslist" 
+} else {
+    Write-Host "ERRO: steam.exe não encontrado em $steamDir" -ForegroundColor Red
+}
 
 # Força o encerramento completo da sessão do PowerShell atual para avisar o Electron
 Start-Sleep -Seconds 2
