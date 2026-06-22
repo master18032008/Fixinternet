@@ -136,8 +136,6 @@ if (Test-Path $exe) {
     Start-Process $exe -ArgumentList "-clearbeta"
 }
 
-# ... (resto do seu script anterior acima) ...
-
 Log "INFO" "Reiniciando Steam..."
 $exe = Join-Path $steamDir "steam.exe"
 if (Test-Path $exe) { Start-Process $exe -ArgumentList "-clearbeta" }
