@@ -1,12 +1,12 @@
 # =========================================================================
-# CloudRedirect Installer - Versão Direta (v2.1.8 Estável)
+# CloudRedirect Installer - Versão Direta (v2.1.9 Atualizada)
 # =========================================================================
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
 
-$Host.UI.RawUI.WindowTitle = "CloudRedirect Installer | Loja GameOver"
+$Host.UI.RawUI.WindowTitle = "CloudRedirect Installer | Loja GameOver v2.1.9"
 Clear-Host
 
-# ==================== CONFIGURAÇÃO DE LINKS DIRETOS (v2.1.8) ====================
+# ==================== CONFIGURAÇÃO DE LINKS DIRETOS (v2.1.9) ====================
 $LinkDoFixer = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.1.9/CloudRedirectCLI.exe"
 $LinkDaDll   = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.1.9/cloud_redirect.dll"
 # ===========================================================================
@@ -36,35 +36,35 @@ function Find-SteamPath {
         $reg = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -ErrorAction SilentlyContinue
         if ($reg.InstallPath) { $PossiblePaths += $reg.InstallPath }
     } catch {}
-   
+    
     try {
         $reg = Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue
         if ($reg.SteamPath) { $PossiblePaths += $reg.SteamPath -replace '\\\\', '\' }
     } catch {}
-   
+    
     $DefaultPath = "C:\Program Files (x86)\Steam"
     if (Test-Path $DefaultPath) { $PossiblePaths += $DefaultPath }
-   
+    
     $PossiblePaths = $PossiblePaths | Select-Object -Unique | Where-Object { Test-Path $_ }
-   
+    
     if ($PossiblePaths.Count -eq 0) {
         Log "ERR" "Steam installation not found."
         exit 1
     }
-   
+    
     $SteamPath = $PossiblePaths[0]
     Log "OK" "Steam found at: $SteamPath"
     return $SteamPath
 }
 
-$steam = Find-SteamPath
+$steamDir = Find-SteamPath
 
 Log "INFO" "Closing Steam if running..."
 Get-Process -Name "steam", "steamwebhelper" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 3
 Write-Host ""
 
-Log "INFO" "Downloading CloudRedirect v2.1.8 files via Direct Stream..."
+Log "INFO" "Downloading CloudRedirect v2.1.9 files..."
 
 $tmpFolder = "C:\GameOver_Cloud_Tmp"
 if (Test-Path $tmpFolder) { Remove-Item $tmpFolder -Recurse -Force -ErrorAction SilentlyContinue }
@@ -74,30 +74,19 @@ $CliFile = Join-Path $tmpFolder "CloudRedirectCLI.exe"
 $DllFile = Join-Path $tmpFolder "cloud_redirect.dll"
 
 try {
-    # Download direto do Executável v2.1.8
-    Log "LOG" "Downloading CloudRedirectCLI.exe v2.1.8..."
+    Log "LOG" "Downloading CloudRedirectCLI.exe v2.1.9..."
     Invoke-WebRequest -Uri $LinkDoFixer -UserAgent "Mozilla/5.0" -OutFile $CliFile -TimeoutSec 60 -ErrorAction Stop
-    Log "OK" "CloudRedirectCLI.exe downloaded"
+    Log "OK" "CloudRedirectCLI.exe v2.1.9 downloaded"
 
-    # Download direto da DLL v2.1.8
-    Log "LOG" "Downloading cloud_redirect.dll v2.1.8..."
+    Log "LOG" "Downloading cloud_redirect.dll v2.1.9..."
     Invoke-WebRequest -Uri $LinkDaDll -UserAgent "Mozilla/5.0" -OutFile $DllFile -TimeoutSec 60 -ErrorAction Stop
-    Log "OK" "cloud_redirect.dll downloaded"
+    Log "OK" "cloud_redirect.dll v2.1.9 downloaded"
 }
 catch {
-    Log "ERR" "Failed to download files from remote server."
-    Log "ERR" $_.Exception.Message
-    Write-Host "Pressione qualquer tecla para fechar..."
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    Log "ERR" "Failed to download files."
     if (Test-Path $tmpFolder) { Remove-Item $tmpFolder -Recurse -Force -ErrorAction SilentlyContinue }
     exit 1
 }
-
-for ($i = 5; $i -ge 1; $i--) {
-    Log "INFO" "Starting CloudRedirect Fixer in $i second$(if($i -gt 1){'s'})..." $true
-    Start-Sleep -Seconds 1
-}
-Write-Host ""
 
 Log "INFO" "Running CloudRedirect Fixer..."
 try {
@@ -106,11 +95,10 @@ try {
 }
 catch {
     Log "ERR" "Error while executing CloudRedirectCLI"
-    Log "ERR" $_.Exception.Message
 }
 
 Log "INFO" "Installing cloud_redirect.dll to Steam folder..."
-$TargetDll = Join-Path $steam "cloud_redirect.dll"
+$TargetDll = Join-Path $steamDir "cloud_redirect.dll"
 
 try {
     Copy-Item -Path $DllFile -Destination $TargetDll -Force -ErrorAction Stop
@@ -118,45 +106,19 @@ try {
 }
 catch {
     Log "ERR" "Failed to copy cloud_redirect.dll"
-    Log "ERR" $_.Exception.Message
 }
 
 Start-Sleep -Seconds 2
 Log "INFO" "Cleaning temporary files..."
 if (Test-Path $tmpFolder) { Remove-Item $tmpFolder -Recurse -Force -ErrorAction SilentlyContinue }
-Log "OK" "Temporary files removed"
 
-Write-Host ""
 Log "OK" "Operation completed successfully!"
-Write-Host ""
 
-$exe = Join-Path $steam "steam.exe"
-if (Test-Path $exe) {
-    Log "INFO" "Starting Steam..."
-    Start-Process $exe -ArgumentList "-clearbeta"
-}
-
-# Tenta pegar o caminho do registro, se falhar, usa o padrão
-if (-not $steamDir) {
-    $regPath = "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam"
-    if (Test-Path $regPath) {
-        $steamDir = (Get-ItemProperty $regPath).InstallPath
-    } else {
-        $steamDir = "C:\Program Files (x86)\Steam"
-    }
-}
-
-# Agora o Join-Path não vai falhar porque $steamDir sempre terá um valor
+Log "INFO" "Starting Steam..."
 $exe = Join-Path $steamDir "steam.exe"
-
 if (Test-Path $exe) { 
-    Write-Host "Iniciando Steam em: $exe" -ForegroundColor Cyan
     Start-Process $exe -ArgumentList "-clearbeta -no-browser +open steam://open/minigameslist" 
-} else {
-    Write-Host "ERRO: steam.exe não encontrado em $steamDir" -ForegroundColor Red
 }
 
-# Força o encerramento completo da sessão do PowerShell atual para avisar o Electron
-Start-Sleep -Seconds 2
+# Força o encerramento do script com código de sucesso para o Electron
 [Environment]::Exit(0)
-exit
