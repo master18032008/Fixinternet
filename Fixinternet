@@ -7,8 +7,8 @@ $Host.UI.RawUI.WindowTitle = "CloudRedirect Installer | Loja GameOver"
 Clear-Host
 
 # ==================== CONFIGURAÇÃO DE LINKS DIRETOS (v2.1.8) ====================
-$LinkDoFixer = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.1.8/CloudRedirectCLI.exe"
-$LinkDaDll   = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.1.8/cloud_redirect.dll"
+$LinkDoFixer = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.1.9/CloudRedirectCLI.exe"
+$LinkDaDll   = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.1.9/cloud_redirect.dll"
 # ===========================================================================
 
 function Log {
