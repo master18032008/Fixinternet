@@ -1,14 +1,14 @@
 # =========================================================================
-# CloudRedirect Installer - Versão Direta (v2.1.9 Atualizada)
+# CloudRedirect Installer - Versão Direta (v2.2.1 Atualizada)
 # =========================================================================
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
 
-$Host.UI.RawUI.WindowTitle = "CloudRedirect Installer | Loja GameOver v2.1.9"
+$Host.UI.RawUI.WindowTitle = "CloudRedirect Installer | Loja GameOver v2.2.1"
 Clear-Host
 
-# ==================== CONFIGURAÇÃO DE LINKS DIRETOS (v2.1.9) ====================
-$LinkDoFixer = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.2.0/CloudRedirectCLI.exe"
-$LinkDaDll   = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.2.0/cloud_redirect.dll"
+# ==================== CONFIGURAÇÃO DE LINKS DIRETOS (v2.2.1) ====================
+$LinkDoFixer = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.2.1/CloudRedirectCLI.exe"
+$LinkDaDll   = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.2.1/cloud_redirect.dll"
 # ===========================================================================
 
 function Log {
@@ -64,7 +64,7 @@ Get-Process -Name "steam", "steamwebhelper" -ErrorAction SilentlyContinue | Stop
 Start-Sleep -Seconds 3
 Write-Host ""
 
-Log "INFO" "Downloading CloudRedirect v2.1.9 files..."
+Log "INFO" "Downloading CloudRedirect v2.2.1 files..."
 
 $tmpFolder = "C:\GameOver_Cloud_Tmp"
 if (Test-Path $tmpFolder) { Remove-Item $tmpFolder -Recurse -Force -ErrorAction SilentlyContinue }
@@ -74,13 +74,13 @@ $CliFile = Join-Path $tmpFolder "CloudRedirectCLI.exe"
 $DllFile = Join-Path $tmpFolder "cloud_redirect.dll"
 
 try {
-    Log "LOG" "Downloading CloudRedirectCLI.exe v2.1.9..."
+    Log "LOG" "Downloading CloudRedirectCLI.exe v2.2.1..."
     Invoke-WebRequest -Uri $LinkDoFixer -UserAgent "Mozilla/5.0" -OutFile $CliFile -TimeoutSec 60 -ErrorAction Stop
-    Log "OK" "CloudRedirectCLI.exe v2.1.9 downloaded"
+    Log "OK" "CloudRedirectCLI.exe v2.2.1 downloaded"
 
-    Log "LOG" "Downloading cloud_redirect.dll v2.1.9..."
+    Log "LOG" "Downloading cloud_redirect.dll v2.2.1..."
     Invoke-WebRequest -Uri $LinkDaDll -UserAgent "Mozilla/5.0" -OutFile $DllFile -TimeoutSec 60 -ErrorAction Stop
-    Log "OK" "cloud_redirect.dll v2.1.9 downloaded"
+    Log "OK" "cloud_redirect.dll v2.2.1 downloaded"
 }
 catch {
     Log "ERR" "Failed to download files."
