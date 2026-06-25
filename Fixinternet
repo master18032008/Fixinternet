@@ -6,10 +6,8 @@
 $Host.UI.RawUI.WindowTitle = "CloudRedirect Installer | Loja GameOver v2.2.1"
 Clear-Host
 
-# ==================== CONFIGURAÇÃO DE LINKS DIRETOS (v2.2.1) ====================
 $LinkDoFixer = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.2.1/CloudRedirectCLI.exe"
 $LinkDaDll   = "https://github.com/Selectively11/CloudRedirect/releases/download/v2.2.1/cloud_redirect.dll"
-# ===========================================================================
 
 function Log {
     param ([string]$Type, [string]$Message, [boolean]$NoNewline = $false)
@@ -28,43 +26,45 @@ function Log {
     Write-Host "[$Type] $Message" -ForegroundColor $color -NoNewline:$NoNewline
 }
 
-Log "INFO" "Searching for Steam installation..."
+function Get-DetailedError {
+    param ($Exception)
+    $msg = $Exception.Message
+    if ($msg -match "Access to the path" -or $msg -match "UnauthorizedAccess") {
+        return "Erro de Permissao: O script precisa ser executado como Administrador."
+    } elseif ($msg -match "The remote name could not be resolved" -or $msg -match "connection") {
+        return "Erro de Rede: Verifique sua conexao com a internet."
+    } elseif ($msg -match "Antivirus" -or $msg -match "Trojan" -or $msg -match "security") {
+        return "Bloqueio de Antivirus/Windows Defender: O arquivo foi colocado em quarentena."
+    } else {
+        return "Erro desconhecido: $msg"
+    }
+}
 
+Log "INFO" "Searching for Steam installation..."
 function Find-SteamPath {
     $PossiblePaths = @()
-    try {
-        $reg = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -ErrorAction SilentlyContinue
-        if ($reg.InstallPath) { $PossiblePaths += $reg.InstallPath }
-    } catch {}
-    
-    try {
-        $reg = Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue
-        if ($reg.SteamPath) { $PossiblePaths += $reg.SteamPath -replace '\\\\', '\' }
-    } catch {}
-    
+    try { $reg = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -ErrorAction SilentlyContinue; if ($reg.InstallPath) { $PossiblePaths += $reg.InstallPath } } catch {}
+    try { $reg = Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue; if ($reg.SteamPath) { $PossiblePaths += $reg.SteamPath -replace '\\\\', '\' } } catch {}
     $DefaultPath = "C:\Program Files (x86)\Steam"
     if (Test-Path $DefaultPath) { $PossiblePaths += $DefaultPath }
-    
     $PossiblePaths = $PossiblePaths | Select-Object -Unique | Where-Object { Test-Path $_ }
-    
-    if ($PossiblePaths.Count -eq 0) {
-        Log "ERR" "Steam installation not found."
-        exit 1
-    }
-    
-    $SteamPath = $PossiblePaths[0]
-    Log "OK" "Steam found at: $SteamPath"
-    return $SteamPath
+    if ($PossiblePaths.Count -eq 0) { Log "ERR" "Steam not found."; exit 1 }
+    return $PossiblePaths[0]
 }
 
 $steamDir = Find-SteamPath
-
-Log "INFO" "Closing Steam if running..."
+Log "INFO" "Closing Steam..."
 Get-Process -Name "steam", "steamwebhelper" -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Seconds 3
-Write-Host ""
+Start-Sleep -Seconds 2
 
-Log "INFO" "Downloading CloudRedirect v2.2.1 files..."
+# === CONTADOR DE 5 SEGUNDOS ===
+Log "INFO" "Iniciando instalacao em 5 segundos..."
+for ($i=5; $i -gt 0; $i--) {
+    Write-Host "Iniciando em $i..." -ForegroundColor Yellow -NoNewline
+    Start-Sleep -Seconds 1
+    Write-Host "`r" -NoNewline
+}
+Write-Host "Executando agora!" -ForegroundColor Green
 
 $tmpFolder = "C:\GameOver_Cloud_Tmp"
 if (Test-Path $tmpFolder) { Remove-Item $tmpFolder -Recurse -Force -ErrorAction SilentlyContinue }
@@ -74,51 +74,26 @@ $CliFile = Join-Path $tmpFolder "CloudRedirectCLI.exe"
 $DllFile = Join-Path $tmpFolder "cloud_redirect.dll"
 
 try {
-    Log "LOG" "Downloading CloudRedirectCLI.exe v2.2.1..."
-    Invoke-WebRequest -Uri $LinkDoFixer -UserAgent "Mozilla/5.0" -OutFile $CliFile -TimeoutSec 60 -ErrorAction Stop
-    Log "OK" "CloudRedirectCLI.exe v2.2.1 downloaded"
-
-    Log "LOG" "Downloading cloud_redirect.dll v2.2.1..."
-    Invoke-WebRequest -Uri $LinkDaDll -UserAgent "Mozilla/5.0" -OutFile $DllFile -TimeoutSec 60 -ErrorAction Stop
-    Log "OK" "cloud_redirect.dll v2.2.1 downloaded"
+    Log "LOG" "Baixando arquivos..."
+    Invoke-WebRequest -Uri $LinkDoFixer -UserAgent "Mozilla/5.0" -OutFile $CliFile -ErrorAction Stop
+    Invoke-WebRequest -Uri $LinkDaDll -UserAgent "Mozilla/5.0" -OutFile $DllFile -ErrorAction Stop
 }
 catch {
-    Log "ERR" "Failed to download files."
-    if (Test-Path $tmpFolder) { Remove-Item $tmpFolder -Recurse -Force -ErrorAction SilentlyContinue }
+    Log "ERR" (Get-DetailedError $_.Exception)
     exit 1
 }
 
-Log "INFO" "Running CloudRedirect Fixer..."
+Log "INFO" "Running Fixer..."
 try {
     & $CliFile /stfixer
-    Log "OK" "CloudRedirectCLI executed successfully"
+    Copy-Item -Path $DllFile -Destination (Join-Path $steamDir "cloud_redirect.dll") -Force -ErrorAction Stop
+    Log "OK" "Operacao concluida com sucesso!"
 }
 catch {
-    Log "ERR" "Error while executing CloudRedirectCLI"
+    Log "ERR" (Get-DetailedError $_.Exception)
 }
 
-Log "INFO" "Installing cloud_redirect.dll to Steam folder..."
-$TargetDll = Join-Path $steamDir "cloud_redirect.dll"
-
-try {
-    Copy-Item -Path $DllFile -Destination $TargetDll -Force -ErrorAction Stop
-    Log "OK" "cloud_redirect.dll installed successfully"
-}
-catch {
-    Log "ERR" "Failed to copy cloud_redirect.dll"
-}
-
-Start-Sleep -Seconds 2
-Log "INFO" "Cleaning temporary files..."
 if (Test-Path $tmpFolder) { Remove-Item $tmpFolder -Recurse -Force -ErrorAction SilentlyContinue }
-
-Log "OK" "Operation completed successfully!"
-
-Log "INFO" "Starting Steam..."
-$exe = Join-Path $steamDir "steam.exe"
-if (Test-Path $exe) { 
-    Start-Process $exe -ArgumentList "-clearbeta -no-browser +open steam://open/minigameslist" 
-}
-
-# Força o encerramento do script com código de sucesso para o Electron
+Log "INFO" "Iniciando Steam..."
+Start-Process (Join-Path $steamDir "steam.exe") -ArgumentList "-clearbeta -no-browser +open steam://open/minigameslist"
 [Environment]::Exit(0)
